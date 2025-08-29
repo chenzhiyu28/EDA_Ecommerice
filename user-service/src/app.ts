@@ -8,7 +8,7 @@ app.use(express.json());
 
 // MongoDB
 mongoose
-    .connect("mongodb://127.0.0.1:27017/user-service")
+    .connect("mongodb://127.0.0.1:27017/game")
     .then(() => console.log("✅ MongoDB connected"))
     .catch((err) => console.error("❌ MongoDB connection error:", err));
 

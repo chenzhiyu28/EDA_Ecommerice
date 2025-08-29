@@ -14,10 +14,16 @@ router.get("/", async (req:Request, res:Response) => {
 });
 
 
-// api/users/123
-router.get("/:id", (req, res) => {
-    const {id} = req.params;
-    res.json({message: `user with id ${id}:`})
+// api/users/name
+router.get("/:name", async (req, res) => {
+    const {name} = req.params;
+    
+    try {
+        const user = await User.find({username:`${name}`});
+        res.status(200).json(user);
+    } catch(err: any) {
+        res.status(500).json({error: err.message});
+    }
 });
 
 
