@@ -43,7 +43,7 @@ router.get("/search", async (req:Request,res:Response) => {
 })
 
 
-// register
+// api/users/register
 router.post("/register", async (req: Request, res:Response) => {
     try {        
         const {username, email, password} = req.body;
