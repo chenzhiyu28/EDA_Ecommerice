@@ -1,25 +1,25 @@
 import { Request, Response, Router } from "express";
-import User, { IUser } from "../models/User";
+import userModel, { IUser } from "../models/User";
 
 const router = Router();
 
-// api/users
+// Get api/users
 router.get("/", async (req:Request, res:Response) => {
     try {
-        const users:IUser[] = await User.find();
-        res.status(201).json({users});
+        const users:IUser[] = await userModel.find();
+        res.status(200).json({users});
     } catch (err: any) {
         res.status(500).json({error: err.message});
     }
 });
 
 
-// api/users/name
+// Get api/users/name
 router.get("/:name", async (req, res) => {
     const {name} = req.params;
     
     try {
-        const user = await User.find({username:`${name}`});
+        const user = await userModel.find({username:`${name}`});
         res.status(200).json(user);
     } catch(err: any) {
         res.status(500).json({error: err.message});
@@ -27,7 +27,7 @@ router.get("/:name", async (req, res) => {
 });
 
 
-// api/users/search?name=tom
+// Get api/users/search?name=tom
 router.get("/search", async (req:Request,res:Response) => {
     const {name} = req.query;
     if (!name) {
@@ -35,8 +35,8 @@ router.get("/search", async (req:Request,res:Response) => {
     }
 
     try {
-        const user = await User.find({username: name});
-        res.status(201).json(user);
+        const user = await userModel.find({username: name});
+        res.status(200).json(user);
     } catch (err: any) {
         res.status(500).json({error: err.message});
     }
@@ -51,7 +51,7 @@ router.post("/register", async (req: Request, res:Response) => {
             return res.status(400).json({error: "Missing required fields!"})
         }
 
-        const newUser = new User({username, email, password});
+        const newUser = new userModel({username, email, password});
         await newUser.save();
         res.status(201).json(newUser);
     } catch (error: any) {
