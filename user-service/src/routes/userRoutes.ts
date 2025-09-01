@@ -3,18 +3,18 @@ import userModel, { IUser } from "../models/User";
 
 const router = Router();
 
-// api/users
+// Get api/users
 router.get("/", async (req:Request, res:Response) => {
     try {
         const users:IUser[] = await userModel.find();
-        res.status(201).json({users});
+        res.status(200).json({users});
     } catch (err: any) {
         res.status(500).json({error: err.message});
     }
 });
 
 
-// api/users/name
+// Get api/users/name
 router.get("/:name", async (req, res) => {
     const {name} = req.params;
     
@@ -27,7 +27,7 @@ router.get("/:name", async (req, res) => {
 });
 
 
-// api/users/search?name=tom
+// Get api/users/search?name=tom
 router.get("/search", async (req:Request,res:Response) => {
     const {name} = req.query;
     if (!name) {
@@ -36,7 +36,7 @@ router.get("/search", async (req:Request,res:Response) => {
 
     try {
         const user = await userModel.find({username: name});
-        res.status(201).json(user);
+        res.status(200).json(user);
     } catch (err: any) {
         res.status(500).json({error: err.message});
     }
