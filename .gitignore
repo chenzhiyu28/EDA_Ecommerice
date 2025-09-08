@@ -1,0 +1,15 @@
+
+# ignore all node_modules
+**/node_modules
+
+
+# all .env files under child service
+**/.env
+
+
+# compile output file
+**/dist
+
+
+# system file
+.DS_Store

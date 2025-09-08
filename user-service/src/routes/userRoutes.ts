@@ -1,7 +1,6 @@
 import { Request, Response, Router } from "express";
 import userModel, { IUser } from "../models/User";
 import { failure, success } from "../utils/response";
-import { fail } from "assert";
 
 const router = Router();
 
