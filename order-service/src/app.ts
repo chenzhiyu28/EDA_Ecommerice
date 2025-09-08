@@ -1,4 +1,6 @@
-import express = require("express");
+// import express = require("express");
+
+import express from "express"
 import orderRouter from "./routes/orderRoutes";
 import mongoose from "mongoose";
 

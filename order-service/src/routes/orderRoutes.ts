@@ -1,5 +1,6 @@
 import { Router } from "express";
 import orderModel from "../models/Order";
+import { failure, success } from "../utils/response";
 
 const router = Router();
 
@@ -8,9 +9,9 @@ const router = Router();
 router.get("/orders", async (req, res) => {
     try {
         const orders = await orderModel.find();
-        res.status(200).json(orders);
+        return success(res, orders, 200);
     } catch (err: any) {
-        res.status(500).json({error: err.message})
+        return failure(res, err.message, 500);
     }
 })
 
@@ -24,9 +25,9 @@ router.post("/order", async (req, res) => {
     try {
         const order = new orderModel({userID, amount, status});
         await order.save();
-        res.status(201).json(order);
+        return success(res, order, 201);
     } catch(err: any) {
-        res.status(500).json({error: err.message});
+        return failure(res, err.message, 500)
     }
 })
 

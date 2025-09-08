@@ -1,5 +1,7 @@
 import { Request, Response, Router } from "express";
 import userModel, { IUser } from "../models/User";
+import { failure, success } from "../utils/response";
+import { fail } from "assert";
 
 const router = Router();
 
@@ -7,9 +9,9 @@ const router = Router();
 router.get("/", async (req:Request, res:Response) => {
     try {
         const users:IUser[] = await userModel.find();
-        res.status(200).json({users});
+        return success(res, users, 200);
     } catch (err: any) {
-        res.status(500).json({error: err.message});
+        return failure(res, err.message, 500);
     }
 });
 
@@ -20,9 +22,9 @@ router.get("/:name", async (req, res) => {
     
     try {
         const user = await userModel.find({username:`${name}`});
-        res.status(200).json(user);
+        return success(res, user, 200);
     } catch(err: any) {
-        res.status(500).json({error: err.message});
+        return failure(res, err.message, 500);
     }
 });
 
@@ -36,9 +38,9 @@ router.get("/search", async (req:Request,res:Response) => {
 
     try {
         const user = await userModel.find({username: name});
-        res.status(200).json(user);
+        return success(res, user, 200);
     } catch (err: any) {
-        res.status(500).json({error: err.message});
+        return failure(res, err.message, 500);
     }
 })
 
@@ -48,14 +50,14 @@ router.post("/register", async (req: Request, res:Response) => {
     try {        
         const {username, email, password} = req.body;
         if (!(username&&email&&password)) {
-            return res.status(400).json({error: "Missing required fields!"})
+            return failure(res, "missing required fields!", 400);
         }
 
         const newUser = new userModel({username, email, password});
         await newUser.save();
-        res.status(201).json(newUser);
+        return success(res, newUser, 201);
     } catch (error: any) {
-        res.status(500).json({error: error.message});
+        return failure(res, error.message, 500);
     }
 });
 
