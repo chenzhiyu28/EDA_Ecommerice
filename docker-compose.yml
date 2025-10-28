@@ -1,0 +1,68 @@
+version: '3.8' # 指定 docker-compose 文件格式的版本
+
+services: # 定义组成应用的所有容器服务
+
+  # 用户数据库服务
+  user-db:
+    image: mongo:latest # 使用官方最新的 MongoDB 镜像
+    container_name: user-db # 给容器起个名字，方便识别
+    volumes: # 数据持久化，将容器内的 /data/db 映射到本地的 user-mongo-data 卷
+      - user-mongo-data:/data/db
+    networks: # 将容器连接到内部网络 my_network
+      - my_network
+    restart: unless-stopped # 除非手动停止，否则容器挂掉后自动重启
+
+  # 订单数据库服务
+  order-db:
+    image: mongo:latest
+    container_name: order-db
+    volumes:
+      - order-mongo-data:/data/db
+    networks:
+      - my_network
+    restart: unless-stopped
+
+  # 用户服务
+  user-service:
+    container_name: user-service
+    build: # 指定如何构建这个服务的镜像
+      context: ./user-service # Dockerfile 所在的目录（相对 docker-compose.yml）
+      dockerfile: Dockerfile # Dockerfile 的文件名
+    ports: # 端口映射 <主机端口>:<容器端口>
+      - "3000:3000" # 将你本地的 3000 端口映射到容器的 3000 端口
+    environment: # 设置容器内的环境变量
+      # 注意：这里的值会覆盖服务代码中 dotenv 加载的值
+      - PORT=3000 #
+      - MONGODB_URL=mongodb://user-db:27017/user-service # 指向 user-db 容器
+      - NODE_ENV=development #
+    depends_on: # 依赖关系，确保 user-db 先启动
+      - user-db
+    networks:
+      - my_network
+    restart: unless-stopped
+
+  # 订单服务
+  order-service:
+    container_name: order-service
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001" #
+    environment:
+      - PORT=3001 #
+      - MONGODB_URL=mongodb://order-db:27017/order-service # 指向 order-db 容器
+      - NODE_ENV=development #
+    depends_on:
+      - order-db
+    networks:
+      - my_network
+    restart: unless-stopped
+
+volumes: # 定义数据卷，用于数据持久化
+  user-mongo-data:
+  order-mongo-data:
+
+networks: # 定义网络
+  my_network:
+    driver: bridge # 使用 Docker 默认的桥接网络驱动

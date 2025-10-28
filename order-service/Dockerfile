@@ -9,8 +9,11 @@ COPY package*.json ./
 RUN npm ci
 
 COPY ./ ./
+
+RUN npm run build
 # remove dev dependencies
 RUN npm prune --production
+
 
 
 
