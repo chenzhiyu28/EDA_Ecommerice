@@ -1,6 +1,6 @@
 
 # ignore all node_modules
-**/node_modules
+**/node_modules/
 
 
 # all .env files under child service
