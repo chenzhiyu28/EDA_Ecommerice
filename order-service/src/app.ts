@@ -3,6 +3,7 @@ import orderRouter from "./routes/orderRoutes";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { success } from "./utils/response";
+import { runConsumer } from "./kafka"; // <--- 导入运行函数
 
 // load env variable
 dotenv.config();
@@ -13,10 +14,12 @@ app.use(express.json())
 
 // MongoDB
 mongoose
-    .connect(process.env.MONGODB_URL || "mongodb://127.0.0.1:27017/order-service")
+    .connect(process.env.MONGODB_URI || "mongodb://order-db:27017/order-service") // <--- 确认这里指向 docker 服务名
     .then(() => console.log("✅ MongoDB connected"))
     .catch((err) => console.error("❌ MongoDB connection error:", err));
 
+
+runConsumer();
 
 // router
 app.use("/api", orderRouter)

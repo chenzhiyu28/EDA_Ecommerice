@@ -58,7 +58,10 @@ services: # 定义组成应用的所有容器服务
       - MONGODB_URL=mongodb://order-db:27017/order-service # 指向 order-db 容器
       - NODE_ENV=development #
     depends_on:
-      - order-db
+      order-db:
+        condition: service_started # Default condition, wait for container start
+      kafka: # Add dependency on kafka
+        condition: service_healthy # Wait for kafka's healthcheck to pass
     networks:
       - my_network
     restart: unless-stopped
