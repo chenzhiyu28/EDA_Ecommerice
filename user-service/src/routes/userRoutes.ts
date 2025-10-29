@@ -1,6 +1,7 @@
 import { Request, Response, Router } from "express";
 import userModel, { IUser } from "../models/User";
 import { failure, success } from "../utils/response";
+import { sendMessage } from "../kafka";
 
 const router = Router();
 
@@ -54,6 +55,13 @@ router.post("/register", async (req: Request, res:Response) => {
 
         const newUser = new userModel({username, email, password});
         await newUser.save();
+
+        const messagePayload = {
+            id: newUser._id,
+            email: newUser.email,
+        }
+
+        sendMessage('user.created', messagePayload);
         return success(res, newUser, 201);
     } catch (error: any) {
         return failure(res, error.message, 500);
