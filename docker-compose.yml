@@ -22,6 +22,17 @@ services: # 定义组成应用的所有容器服务
       - my_network
     restart: unless-stopped
 
+  # 产品数据库服务
+  product-db:
+    image: mongo:latest
+    container_name: product-db
+    volumes:
+      - product-mongo-data:/data/db # 使用新的数据卷
+    networks:
+      - my_network # 加入网络
+    restart: unless-stopped
+
+
   # 用户服务
   user-service:
     container_name: user-service
@@ -66,6 +77,28 @@ services: # 定义组成应用的所有容器服务
       - my_network
     restart: unless-stopped
 
+  #产品服务
+  product-service:
+    container_name: product-service
+    build:
+      context: ./product-service # 指向 product-service 目录
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002" # 映射主机 3002 到容器 3002
+    environment:
+      - PORT=3002
+      - MONGODB_URI=mongodb://product-db:27017/product-service # !! 指向 product-db 容器 !!
+      - NODE_ENV=development
+    depends_on: # 依赖 product-db 启动
+      product-db:
+        condition: service_started 
+      kafka: # <-- Add dependency on kafka
+        condition: service_healthy
+    networks:
+      - my_network 
+    restart: unless-stopped
+
+
   # Kafka 服务 (Kraft 模式, 单节点)
   kafka:
     image: confluentinc/cp-kafka:latest # 使用 Confluent 提供的 Kafka 镜像
@@ -105,6 +138,7 @@ services: # 定义组成应用的所有容器服务
 volumes: # 定义数据卷，用于数据持久化
   user-mongo-data:
   order-mongo-data:
+  product-mongo-data:
 
 networks: # 定义网络
   my_network:
