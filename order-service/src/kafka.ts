@@ -1,5 +1,7 @@
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import UserCacheModel from './models/UserCache';
+import ProductCacheModel from './models/ProductCache';
+
 
 const kafka = new Kafka({
   clientId: 'order-service',
@@ -12,10 +14,9 @@ const kafka = new Kafka({
 
 const consumer: Consumer = kafka.consumer({ groupId: 'order-service-group' });
 
-/**
- * 处理 'user.created' 主题的消息
- * 使用 upsert 幂等地将用户数据缓存到 order-db
- */
+
+// 'user.created' messages
+
 const handleUserCreated = async (messageValue: string | undefined) => {
   if (!messageValue) {
     console.log('   Received message with empty value.');
@@ -45,6 +46,36 @@ const handleUserCreated = async (messageValue: string | undefined) => {
 };
 
 
+// product.created messages
+const handleProductCreated = async (messageValue: string | undefined) => {
+  if (!messageValue) {
+    console.log('   Received message with empty value.');
+    return;
+  }
+
+  const productData = JSON.parse(messageValue);
+  console.log('   Message content:', productData);
+
+  if (!productData.id || !productData.name || productData.price === undefined || productData.stock === undefined) {
+    console.warn('   Received message with incomplete product:', productData);
+    return;
+  }
+
+  // 幂等地（Idempotently）更新或插入用户缓存
+  await ProductCacheModel.findByIdAndUpdate(
+    productData.id, // find by id
+    { name: productData.name, price: productData.price, stock: productData.stock }, 
+    { 
+        upsert: true, // "Update if found, Insert if not"
+        new: true,
+        setDefaultsOnInsert: true
+    }
+  );
+  
+  console.log(`   ✅ Stored/Updated product cache for ID: ${productData.id}`);
+};
+
+
 /**
  * 消息处理器 "路由器"
  * 根据 topic 将消息分发给正确的处理函数
@@ -56,12 +87,13 @@ const messageHandler = async ({ topic, message }: EachMessagePayload) => {
   try {
     if (topic === 'user.created') {
       await handleUserCreated(messageValue);
-    
-    // } else if (topic === 'product.created') {
-      // Sprint 2 将在这里添加
-      // await handleProductCreated(messageValue);
-    
-    } else {
+    } 
+
+    else if (topic === "product.created") {
+      await handleProductCreated(messageValue);
+    }
+
+    else {
       console.warn(`   No handler found for topic ${topic}`);
     }
 
@@ -80,8 +112,11 @@ export const runConsumer = async () => {
     console.log('✅ Kafka Consumer connected successfully.');
 
     // 订阅主题 (未来可以订阅多个)
-    await consumer.subscribe({ topic: 'user.created', fromBeginning: true });
-    console.log('📬 Subscribed to topic: user.created');
+    await consumer.subscribe({ 
+      topics: ['user.created', 'product.created'], 
+      fromBeginning: true 
+    });
+    console.log('📬 Subscribed to topic: user.created, product.created');
 
     // run consumer, 将所有消息处理委托给 messageHandler
     await consumer.run({
