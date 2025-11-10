@@ -1,5 +1,3 @@
-version: '3.8' # 指定 docker-compose 文件格式的版本
-
 services: # 定义组成应用的所有容器服务
 
   # 用户数据库服务
