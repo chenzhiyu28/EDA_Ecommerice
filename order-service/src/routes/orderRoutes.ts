@@ -3,10 +3,11 @@ import orderModel from "../models/Order";
 import UserCacheModel from "../models/UserCache";
 import ProductCacheModel from "../models/ProductCache";
 import { failure, success } from "../utils/response";
+import { sendMessage } from "../kafka";
 
 const router = Router();
 
-
+// get all routers
 // Get api/orders
 router.get("/orders", async (req, res) => {
     try {
@@ -18,7 +19,7 @@ router.get("/orders", async (req, res) => {
 })
 
 
-// create order
+// create order (producer msg + product cache)
 // Post api/order
 router.post("/order", async (req, res) => {
     
@@ -26,8 +27,7 @@ router.post("/order", async (req, res) => {
 
     if (!userID || !productID || !quantity) {
         return failure(res, "Missing required fields: userID, productID, quantity", 400);
-    }
-    if (typeof quantity !== 'number' || quantity <= 0) {
+    } else if (typeof quantity !== 'number' || quantity <= 0) {
          return failure(res, "Quantity must be a positive number", 400);
     }
     
@@ -47,11 +47,11 @@ router.post("/order", async (req, res) => {
         if (product.stock < quantity) {
             return failure(res, `Insufficient stock for ${product.name}. Only ${product.stock} left.`, 400);
         }
-
+        
         // price 
         const totalAmount = product.price * quantity;
 
-        // create order in DB cache
+        // create order in DB cache (autonomy)
         const newOrder = new orderModel({
             userID: user._id, //user._id 是 string, 而 OrderSchema 中是 ObjectId, Mongoose 会自动处理转换
             amount: totalAmount,
@@ -59,6 +59,14 @@ router.post("/order", async (req, res) => {
         });
 
         await newOrder.save();
+
+        const messagePayload = {
+            orderID: newOrder._id,
+            productID: productID,
+            quantity: quantity,
+        };
+        sendMessage("order.created", messagePayload);
+
         return success(res, newOrder, 201);
 
     } catch (err: any) {

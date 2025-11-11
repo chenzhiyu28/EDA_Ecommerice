@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { success } from './utils/response';
 import productRouter from './routes/productRoutes';
-import { connectProducer } from './kafka'; // <-- 1. Import connectProducer
+import { connectProducer, runConsumer } from './kafka'; // <-- 1. Import connectProducer
 
 // Load environment variables from .env file
 dotenv.config();
@@ -22,6 +22,7 @@ mongoose.connect(MONGODB_URI)
 
 // --- Connect Kafka Producer ---
 connectProducer(); // <-- 2. Call connectProducer on startup
+runConsumer();
 // ----------------------------
 
 // --- Routes ---

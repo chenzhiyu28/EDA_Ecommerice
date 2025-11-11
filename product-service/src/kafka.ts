@@ -1,21 +1,22 @@
-// Import necessary modules from kafkajs
-import { Kafka, Producer, KafkaConfig, ProducerRecord } from 'kafkajs';
+import { Kafka, Producer, KafkaConfig, ProducerRecord, Consumer, EachMessagePayload } from 'kafkajs';
+import ProductModel from './models/Product';
 
-// Kafka client configuration
+
 const kafkaConfig: KafkaConfig = {
-  // Use a unique client ID for this service
+
   clientId: 'product-service', 
-  // Point to the Kafka broker defined in docker-compose.yml
   brokers: ['kafka:9092'], 
-  // Connection retry settings
   retry: {
       initialRetryTime: 300, 
       retries: 5 
   }
 };
 
-// Create a Kafka client instance
 const kafka = new Kafka(kafkaConfig);
+
+// ----------------  Producer part ---------------- 
+// 1. create and connect instance
+// 2. send msg by Topic
 
 // Create a producer instance from the client
 const producer: Producer = kafka.producer();
@@ -61,5 +62,65 @@ export const disconnectProducer = async (): Promise<void> => {
     }
 };
 
-// Note: We are exporting functions (connectProducer, sendMessage) 
-// rather than the producer instance itself. This promotes better encapsulation.
+
+// ----------------  Consumer part ---------------- 
+// 1.create consumer instance   2.run handler(subscribe to Topic)  3.handle msg
+const consumer: Consumer = kafka.consumer({groupId: "product-service-group"});
+
+// handle order create
+async function _messageHandler({topic, message}: EachMessagePayload) {
+    console.log(`📥 Received message from topic ${topic}:`);
+    const messageValue = message.value?.toString();
+
+    if (!messageValue) {    
+        console.log('Received message with empty value.');
+        return;
+    }
+
+    const userData = JSON.parse(messageValue);
+    console.log('Message content:', userData);
+
+    if (!userData.productID || !userData.quantity) {
+        console.warn('Received message missing product or quantity:', userData);
+        return;
+    }
+
+    await ProductModel.findByIdAndUpdate(
+        userData.productID, 
+        {$inc: { stock: -userData.quantity }} // $inc 会在原值基础上 减去 quantity
+    );
+
+    
+    console.log(`✅ Updated Product quantity for ID: ${userData.productID}`);
+}
+
+export const runConsumer = async () => {
+    try {
+      await consumer.connect();
+      console.log('✅ Kafka Consumer connected successfully.');
+
+      // subscribe
+      await consumer.subscribe({
+        topic: "order.created",
+        fromBeginning: true,
+      })
+      console.log('📬 Subscribed to topic: order.created');
+
+      // handle msg
+      await consumer.run({
+        eachMessage: _messageHandler,
+      });
+    } catch (err: any) {
+      console.error('❌ Failed to run Kafka Consumer (startup error):', err.message);
+      process.exit(1); 
+    }
+}
+
+export const disconnectConsumer = async () => {
+  try {
+    await consumer.disconnect();
+    console.log('🔌 Kafka Consumer disconnected.');
+  } catch (error) {
+    console.error('❌ Failed to disconnect Kafka Consumer:', error);
+  }
+};

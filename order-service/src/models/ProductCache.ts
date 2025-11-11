@@ -1,3 +1,6 @@
+// This is a data copy, and the only source is Kafka events.
+
+
 import mongoose, { Document, Schema } from "mongoose";
 
 

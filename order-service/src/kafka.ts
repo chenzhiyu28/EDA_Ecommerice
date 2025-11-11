@@ -1,4 +1,4 @@
-import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
+import { Kafka, Consumer, EachMessagePayload, Producer, ProducerRecord } from 'kafkajs';
 import UserCacheModel from './models/UserCache';
 import ProductCacheModel from './models/ProductCache';
 
@@ -12,14 +12,16 @@ const kafka = new Kafka({
   }
 });
 
+// ----------------  Consumer part ---------------- 
+// 1.create consumer instance   2.run handler(subscribe to Topic)  3.handle msg
+
+
 const consumer: Consumer = kafka.consumer({ groupId: 'order-service-group' });
 
-
 // 'user.created' messages
-
-const handleUserCreated = async (messageValue: string | undefined) => {
+const _handleUserCreated = async (messageValue: string | undefined) => {
   if (!messageValue) {
-    console.log('   Received message with empty value.');
+    console.log('Received message with empty value.');
     return;
   }
 
@@ -27,11 +29,11 @@ const handleUserCreated = async (messageValue: string | undefined) => {
   console.log('   Message content:', userData);
 
   if (!userData.id || !userData.email) {
-    console.warn('   Received message missing id or email:', userData);
+    console.warn('Received message missing id or email:', userData);
     return;
   }
 
-  // 幂等地（Idempotently）更新或插入用户缓存
+  // 幂等地（Idempotently）更新或插入用户缓存 (执行多次,效果都一样)
   await UserCacheModel.findByIdAndUpdate(
     userData.id, 
     { email: userData.email }, 
@@ -45,9 +47,8 @@ const handleUserCreated = async (messageValue: string | undefined) => {
   console.log(`   ✅ Stored/Updated user cache for ID: ${userData.id}`);
 };
 
-
-// product.created messages
-const handleProductCreated = async (messageValue: string | undefined) => {
+// 'product.created' messages
+const _handleProductCreated = async (messageValue: string | undefined) => {
   if (!messageValue) {
     console.log('   Received message with empty value.');
     return;
@@ -75,22 +76,18 @@ const handleProductCreated = async (messageValue: string | undefined) => {
   console.log(`   ✅ Stored/Updated product cache for ID: ${productData.id}`);
 };
 
-
-/**
- * 消息处理器 "路由器"
- * 根据 topic 将消息分发给正确的处理函数
- */
-const messageHandler = async ({ topic, message }: EachMessagePayload) => {
+// handle msg with different topics
+const _messageHandler = async ({ topic, message }: EachMessagePayload) => {
   console.log(`📥 Received message from topic ${topic}:`);
   const messageValue = message.value?.toString();
 
   try {
     if (topic === 'user.created') {
-      await handleUserCreated(messageValue);
+      await _handleUserCreated(messageValue);
     } 
 
     else if (topic === "product.created") {
-      await handleProductCreated(messageValue);
+      await _handleProductCreated(messageValue);
     }
 
     else {
@@ -102,16 +99,13 @@ const messageHandler = async ({ topic, message }: EachMessagePayload) => {
   }
 };
 
-
-/**
- * run Kafka consumer
- */
+// run Kafka consumer
 export const runConsumer = async () => {
   try {
     await consumer.connect();
     console.log('✅ Kafka Consumer connected successfully.');
 
-    // 订阅主题 (未来可以订阅多个)
+    // subscribe to different topics
     await consumer.subscribe({ 
       topics: ['user.created', 'product.created'], 
       fromBeginning: true 
@@ -120,7 +114,7 @@ export const runConsumer = async () => {
 
     // run consumer, 将所有消息处理委托给 messageHandler
     await consumer.run({
-      eachMessage: messageHandler,
+      eachMessage: _messageHandler,
     });
 
   } catch (error) {
@@ -128,7 +122,6 @@ export const runConsumer = async () => {
     process.exit(1); 
   }
 };
-
 
 export const disconnectConsumer = async () => {
   try {
@@ -138,3 +131,48 @@ export const disconnectConsumer = async () => {
     console.error('❌ Failed to disconnect Kafka Consumer:', error);
   }
 };
+
+
+// ----------------  Producer part ---------------- 
+// 1. create and connect instance
+// 2. send msg by Topic
+
+const producer: Producer = kafka.producer();
+
+// Saga producer
+export const connectProducer = async (): Promise<void> => {
+  try {
+    await producer.connect();
+    console.log('✅ Kafka Producer connected successfully. (Order Service)'); // Log success
+  } catch (error) {
+    console.error('❌ Failed to connect Kafka Producer (Order Service):', error); // Log error
+    // Exit the process if connection fails during startup
+    process.exit(1); 
+  }
+};
+
+// send saga compensation message
+export const sendMessage = async (topic: string, message: any): Promise<void> => {
+    try {
+
+        const record: ProducerRecord = {
+            topic: topic,
+            messages: [{ value: JSON.stringify(message) }],  // Stringify the message object to send as JSON
+        };
+        // Send the record using the producer
+        await producer.send(record);
+
+        console.log(`✉️ Message sent to topic ${topic} (Order Service):`, message); // Log sent message
+    } catch (error) {
+        console.error(`❌ Failed to send message to topic ${topic} (Order Service):`, error); // Log send error
+    }
+};
+
+export const disconnectProducer = async (): Promise<void> => {
+  try {
+    await producer.disconnect();
+    console.log('🔌 Kafka Producer disconnected.');
+  } catch (err: any) {
+    console.error('❌ Failed to disconnect Kafka Consumer:', err.message)
+  }
+}

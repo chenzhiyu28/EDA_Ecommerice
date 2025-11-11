@@ -3,7 +3,7 @@ import orderRouter from "./routes/orderRoutes";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { success } from "./utils/response";
-import { runConsumer } from "./kafka"; // <--- 导入运行函数
+import { connectProducer, runConsumer } from "./kafka"; // <--- 导入运行函数
 
 // load env variable
 dotenv.config();
@@ -19,7 +19,9 @@ mongoose
     .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 
+// Kafka
 runConsumer();
+connectProducer();
 
 // router
 app.use("/api", orderRouter)
